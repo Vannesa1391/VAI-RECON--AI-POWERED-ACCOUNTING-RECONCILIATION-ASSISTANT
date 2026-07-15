@@ -49,10 +49,29 @@ function Sidebar() {
   ];
   return (
     <aside className="fixed inset-y-0 left-0 w-64 bg-sidebar text-sidebar-foreground p-6 flex flex-col">
-      <div className="flex items-center gap-2 mb-10">
-        <div className="w-9 h-9 rounded-lg" style={{ background: "var(--gradient-brand)" }} />
+      <div className="flex items-center gap-3 mb-10">
+        <svg viewBox="0 0 24 24" className="w-10 h-10" fill="none" aria-hidden="true">
+          <defs>
+            <linearGradient id="vaiLogoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="oklch(0.68 0.14 200)" />
+              <stop offset="100%" stopColor="oklch(0.68 0.16 155)" />
+            </linearGradient>
+          </defs>
+          <path
+            d="M4 5 L12 20 L20 5"
+            stroke="url(#vaiLogoGradient)"
+            strokeWidth="3"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <circle cx="8" cy="9" r="1" fill="url(#vaiLogoGradient)" />
+          <circle cx="16" cy="9" r="1" fill="url(#vaiLogoGradient)" />
+          <circle cx="12" cy="15" r="1" fill="url(#vaiLogoGradient)" />
+        </svg>
         <div>
-          <div className="font-display font-semibold text-lg leading-tight">VAI Recon</div>
+          <div className="font-display font-semibold text-lg leading-tight">
+            VAI <span style={{ color: "oklch(0.68 0.16 155)" }}>Recon</span>
+          </div>
           <div className="text-xs text-sidebar-muted">Reconciliation AI</div>
         </div>
       </div>
