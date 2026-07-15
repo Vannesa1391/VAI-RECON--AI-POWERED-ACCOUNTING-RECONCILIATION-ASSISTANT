@@ -5,14 +5,12 @@ import {
   askChatbot,
   autoTracePayment,
   prioritizeAccounts,
-  searchDocuments,
 } from "@/lib/vai.functions";
 
 export const Route = createFileRoute("/")({
   component: Dashboard,
 });
 
-type SearchResult = Awaited<ReturnType<typeof searchDocuments>>;
 type ChatResult = Awaited<ReturnType<typeof askChatbot>>;
 type PrioritizeResult = Awaited<ReturnType<typeof prioritizeAccounts>>;
 type TraceResult = Awaited<ReturnType<typeof autoTracePayment>>;
