@@ -42,7 +42,9 @@ function Sidebar() {
   const items = [
     { label: "Document Search", active: true },
     { label: "AI Chatbot", active: false },
+    { label: "Auto-Tracer", active: false },
     { label: "Task Planner", active: false },
+    { label: "Insights", active: false },
     { label: "Insights", active: false },
   ];
   return (
