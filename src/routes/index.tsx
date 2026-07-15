@@ -26,7 +26,9 @@ function Dashboard() {
         <div className="max-w-7xl mx-auto px-8 py-8">
           <Header />
           <Disclaimer />
-          <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-4 mt-8">
+          <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-3 mt-8">
+            <HealthCard />
+            <ResearchCard />
             <SearchCard />
             <ChatCard />
             <TracerCard />
