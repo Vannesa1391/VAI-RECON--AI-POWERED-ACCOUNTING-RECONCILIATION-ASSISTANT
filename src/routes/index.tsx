@@ -5,14 +5,12 @@ import {
   askChatbot,
   autoTracePayment,
   prioritizeAccounts,
-  searchDocuments,
 } from "@/lib/vai.functions";
 
 export const Route = createFileRoute("/")({
   component: Dashboard,
 });
 
-type SearchResult = Awaited<ReturnType<typeof searchDocuments>>;
 type ChatResult = Awaited<ReturnType<typeof askChatbot>>;
 type PrioritizeResult = Awaited<ReturnType<typeof prioritizeAccounts>>;
 type TraceResult = Awaited<ReturnType<typeof autoTracePayment>>;
@@ -27,11 +25,8 @@ function Dashboard() {
           <Header />
           <Disclaimer />
           <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-3 mt-8">
-            <HealthCard />
             <ResearchCard />
-            <SearchCard />
             <ChatCard />
-            <TracerCard />
             <PlannerCard />
           </div>
         </div>
@@ -42,11 +37,8 @@ function Dashboard() {
 
 function Sidebar() {
   const items = [
-    { label: "Health Dashboard", active: true },
-    { label: "Research Assistant", active: false },
-    { label: "Document Search", active: false },
+    { label: "Research Assistant", active: true },
     { label: "AI Chatbot", active: false },
-    { label: "Auto-Tracer", active: false },
     { label: "Task Planner", active: false },
   ];
   return (
@@ -128,7 +120,7 @@ function Header() {
         <span className="text-gradient-brand">AI-powered</span> reconciliation
       </h1>
       <p className="mt-2 text-muted-foreground max-w-2xl">
-        Match supporting documents, ask VAI about specific invoices, and let the planner
+        Research mystery payments, ask VAI about specific invoices, and let the planner
         rank your unreconciled accounts.
       </p>
     </div>
@@ -227,73 +219,6 @@ function ConfidencePill({ value }: { value: number }) {
   );
 }
 
-function SearchCard() {
-  const run = useServerFn(searchDocuments);
-  const [q, setQ] = useState("");
-  const [result, setResult] = useState<SearchResult | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
-
-  async function submit() {
-    if (!q.trim()) return;
-    setLoading(true);
-    setErr(null);
-    setResult(null);
-    try {
-      setResult(await run({ data: { query: q.trim() } }));
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : "Something went wrong");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  return (
-    <Card>
-      <CardHeader
-        step="01 · Research"
-        title="Document Search"
-        desc="Fuzzy-match supporting docs by reference, invoice, customer, or amount."
-      />
-      <TextInput
-        placeholder="e.g. INV-2035 or ABC Retail R15,500"
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
-        onKeyDown={(e) => e.key === "Enter" && submit()}
-      />
-      <div className="mt-3">
-        <Button onClick={submit} loading={loading}>
-          Find matching documents
-        </Button>
-      </div>
-      <ErrorLine msg={err} />
-      {result && (
-        <div className="mt-4 space-y-2">
-          {result.matches.map((m, i) => (
-            <div
-              key={i}
-              className="rounded-lg border border-border bg-secondary/50 px-3 py-2.5 text-sm flex items-start gap-3"
-            >
-              <div className="w-8 h-8 rounded-md bg-primary/10 text-primary grid place-items-center text-[10px] font-semibold shrink-0">
-                {m.type.slice(0, 3).toUpperCase()}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="font-medium truncate">{m.filename}</div>
-                <div className="text-xs text-muted-foreground mt-0.5">{m.reason}</div>
-              </div>
-              <ConfidencePill value={m.confidence} />
-            </div>
-          ))}
-          {result.interpretation && (
-            <div className="text-xs text-muted-foreground italic px-1 pt-1">
-              {result.interpretation}
-            </div>
-          )}
-        </div>
-      )}
-    </Card>
-  );
-}
 
 function ChatCard() {
   const run = useServerFn(askChatbot);
@@ -319,7 +244,7 @@ function ChatCard() {
   return (
     <Card>
       <CardHeader
-        step="02 · Ask"
+        step="01 · Ask"
         title="AI Chatbot"
         desc="Ask VAI in plain English about a specific invoice, customer, or payment."
       />
@@ -373,7 +298,7 @@ function PlannerCard() {
   return (
     <Card>
       <CardHeader
-        step="03 · Plan"
+        step="02 · Plan"
         title="Task Planner"
         desc="Paste unreconciled accounts. VAI ranks them by risk and age."
       />
@@ -425,180 +350,6 @@ function PlannerCard() {
   );
 }
 
-function TracerCard() {
-  const run = useServerFn(autoTracePayment);
-  const [amount, setAmount] = useState("");
-  const [date, setDate] = useState("");
-  const [ref, setRef] = useState("");
-  const [result, setResult] = useState<TraceResult | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
-  const [confirmed, setConfirmed] = useState(false);
-
-  async function submit() {
-    if (!amount.trim()) return;
-    setLoading(true);
-    setErr(null);
-    setResult(null);
-    setConfirmed(false);
-    try {
-      setResult(
-        await run({
-          data: {
-            amount: amount.trim(),
-            date: date.trim() || null,
-            reference: ref.trim() || null,
-          },
-        }),
-      );
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : "Something went wrong");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  return (
-    <Card>
-      <CardHeader
-        step="04 · Trace"
-        title="Auto-Tracer"
-        desc="Match a mystery bank deposit to an open invoice using amount, date, and reference."
-      />
-      <div className="space-y-2">
-        <TextInput
-          placeholder="Amount (e.g. 15500)"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-        />
-        <TextInput
-          type="date"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-        />
-        <TextInput
-          placeholder="Bank Ref (e.g. 12345)"
-          value={ref}
-          onChange={(e) => setRef(e.target.value)}
-        />
-      </div>
-      <div className="mt-3">
-        <Button onClick={submit} loading={loading}>
-          Trace payment
-        </Button>
-      </div>
-      <ErrorLine msg={err} />
-      {result && (
-        <div className="mt-4 rounded-lg border border-border bg-secondary/50 p-4 text-sm space-y-2">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-primary">
-                Likely match
-              </div>
-              <div className="font-medium mt-0.5">
-                {result.match.invoice} · {result.match.customer}
-              </div>
-              <div className="text-xs text-muted-foreground">{result.match.amount}</div>
-            </div>
-            <ConfidencePill value={result.confidence} />
-          </div>
-          <div className="text-xs text-muted-foreground">
-            <span className="font-semibold text-foreground">Reason: </span>
-            {result.reason}
-          </div>
-          {result.history && (
-            <div className="text-xs text-muted-foreground">
-              <span className="font-semibold text-foreground">History: </span>
-              {result.history}
-            </div>
-          )}
-          {result.confidence >= 50 && (
-            <button
-              onClick={() => setConfirmed(true)}
-              disabled={confirmed}
-              className="mt-1 inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium text-white transition-transform active:scale-[0.98] disabled:opacity-70"
-              style={{ background: "var(--success)" }}
-            >
-              {confirmed ? "✓ Reconciled" : "Confirm & Reconcile"}
-            </button>
-          )}
-        </div>
-      )}
-    </Card>
-  );
-}
-
-function HealthCard() {
-  const buckets = [
-    { label: "0–30 days", value: 800, color: "var(--success)" },
-    { label: "31–60 days", value: 950, color: "var(--primary)" },
-    { label: "60+ days", value: 600, color: "var(--destructive)" },
-  ];
-  const total = buckets.reduce((s, b) => s + b.value, 0);
-  return (
-    <Card>
-      <CardHeader
-        step="00 · Overview"
-        title="Reconciliation Health"
-        desc="Live snapshot of unreconciled balances and AI match performance."
-      />
-      <div className="space-y-3">
-        <Stat label="Total Unreconciled" value="R2,350,400" tone="success" />
-        <Stat label="AI Match Rate" value="87%" tone="primary" />
-        <Stat label="Accounts Over 60 Days" value="R600,000" tone="destructive" />
-      </div>
-      <div className="mt-5">
-        <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-          Outstanding by age
-        </div>
-        <div className="flex h-2.5 rounded-full overflow-hidden border border-border">
-          {buckets.map((b) => (
-            <div
-              key={b.label}
-              style={{ width: `${(b.value / total) * 100}%`, background: b.color }}
-            />
-          ))}
-        </div>
-        <div className="mt-3 space-y-1.5">
-          {buckets.map((b) => (
-            <div key={b.label} className="flex items-center justify-between text-xs">
-              <span className="flex items-center gap-2 text-muted-foreground">
-                <span className="w-2 h-2 rounded-full" style={{ background: b.color }} />
-                {b.label}
-              </span>
-              <span className="font-medium tabular-nums">R{b.value.toLocaleString()}k</span>
-            </div>
-          ))}
-        </div>
-      </div>
-    </Card>
-  );
-}
-
-function Stat({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: string;
-  tone: "success" | "primary" | "destructive";
-}) {
-  const color =
-    tone === "success"
-      ? "var(--success)"
-      : tone === "destructive"
-        ? "var(--destructive)"
-        : "var(--primary)";
-  return (
-    <div className="flex items-center justify-between rounded-lg bg-secondary/50 border border-border px-3.5 py-2.5">
-      <span className="text-sm text-muted-foreground">{label}</span>
-      <span className="font-display font-semibold tabular-nums" style={{ color }}>
-        {value}
-      </span>
-    </div>
-  );
-}
 
 function ResearchCard() {
   const run = useServerFn(autoTracePayment);
@@ -634,7 +385,7 @@ function ResearchCard() {
   return (
     <Card>
       <CardHeader
-        step="00 · Research"
+        step="01 · Research"
         title="AI Research Assistant"
         desc="Analyzes bank data to identify mystery payments — no manual searching needed."
       />
