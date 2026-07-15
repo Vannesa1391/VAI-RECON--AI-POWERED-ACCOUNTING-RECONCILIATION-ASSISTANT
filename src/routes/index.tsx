@@ -120,7 +120,7 @@ function Header() {
         <span className="text-gradient-brand">AI-powered</span> reconciliation
       </h1>
       <p className="mt-2 text-muted-foreground max-w-2xl">
-        Match supporting documents, ask VAI about specific invoices, and let the planner
+        Research mystery payments, ask VAI about specific invoices, and let the planner
         rank your unreconciled accounts.
       </p>
     </div>
