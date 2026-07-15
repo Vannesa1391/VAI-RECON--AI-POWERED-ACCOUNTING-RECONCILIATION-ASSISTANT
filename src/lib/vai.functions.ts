@@ -99,3 +99,47 @@ export const prioritizeAccounts = createServerFn({ method: "POST" })
       throw error;
     }
   });
+
+// ── Auto-Tracer ────────────────────────────────────────────────────
+const TraceInput = z.object({
+  amount: z.string().min(1).max(50),
+  date: z.string().max(50).nullable(),
+  reference: z.string().max(100).nullable(),
+});
+
+export const autoTracePayment = createServerFn({ method: "POST" })
+  .inputValidator((v: unknown) => TraceInput.parse(v))
+  .handler(async ({ data }) => {
+    const gateway = getGateway(true);
+    try {
+      const { output } = await generateText({
+        model: gateway(MODEL),
+        output: Output.object({
+          schema: z.object({
+            match: z.object({
+              invoice: z.string(),
+              customer: z.string(),
+              amount: z.string(),
+            }),
+            reason: z.string(),
+            history: z.string(),
+            confidence: z.number(),
+          }),
+        }),
+        system:
+          "You are VAI Recon's auto-tracer. Given a mystery bank deposit (amount in ZAR, date, short bank reference), infer the most likely open invoice and customer from a plausible ledger. Return a single best match with a concise reason (amount/date/reference logic), a one-sentence customer payment-history note, and a confidence 0-100. Do not add disclaimers.",
+        prompt: `Amount: R${data.amount}\nDate: ${data.date ?? "unknown"}\nBank Ref: ${data.reference ?? "unknown"}`,
+      });
+      return output;
+    } catch (error) {
+      if (NoObjectGeneratedError.isInstance(error)) {
+        return {
+          match: { invoice: "—", customer: "No confident match", amount: `R${data.amount}` },
+          reason: "Could not infer a match from the provided details.",
+          history: "",
+          confidence: 0,
+        };
+      }
+      throw error;
+    }
+  });
