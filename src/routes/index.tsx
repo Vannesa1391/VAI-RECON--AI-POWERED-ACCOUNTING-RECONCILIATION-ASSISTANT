@@ -42,12 +42,12 @@ function Dashboard() {
 
 function Sidebar() {
   const items = [
-    { label: "Document Search", active: true },
+    { label: "Health Dashboard", active: true },
+    { label: "Research Assistant", active: false },
+    { label: "Document Search", active: false },
     { label: "AI Chatbot", active: false },
     { label: "Auto-Tracer", active: false },
     { label: "Task Planner", active: false },
-    { label: "Insights", active: false },
-    { label: "Insights", active: false },
   ];
   return (
     <aside className="fixed inset-y-0 left-0 w-64 bg-sidebar text-sidebar-foreground p-6 flex flex-col">
