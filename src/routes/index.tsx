@@ -15,6 +15,7 @@ export const Route = createFileRoute("/")({
 type SearchResult = Awaited<ReturnType<typeof searchDocuments>>;
 type ChatResult = Awaited<ReturnType<typeof askChatbot>>;
 type PrioritizeResult = Awaited<ReturnType<typeof prioritizeAccounts>>;
+type TraceResult = Awaited<ReturnType<typeof autoTracePayment>>;
 
 function Dashboard() {
   return (
