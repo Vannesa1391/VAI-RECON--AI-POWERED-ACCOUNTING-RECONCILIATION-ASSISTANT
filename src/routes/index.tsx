@@ -385,7 +385,7 @@ function ResearchCard() {
   return (
     <Card>
       <CardHeader
-        step="00 · Research"
+        step="01 · Research"
         title="AI Research Assistant"
         desc="Analyzes bank data to identify mystery payments — no manual searching needed."
       />
