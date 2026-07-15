@@ -3,6 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import {
   askChatbot,
+  autoTracePayment,
   prioritizeAccounts,
   searchDocuments,
 } from "@/lib/vai.functions";
@@ -14,6 +15,7 @@ export const Route = createFileRoute("/")({
 type SearchResult = Awaited<ReturnType<typeof searchDocuments>>;
 type ChatResult = Awaited<ReturnType<typeof askChatbot>>;
 type PrioritizeResult = Awaited<ReturnType<typeof prioritizeAccounts>>;
+type TraceResult = Awaited<ReturnType<typeof autoTracePayment>>;
 
 function Dashboard() {
   return (
@@ -24,9 +26,10 @@ function Dashboard() {
         <div className="max-w-7xl mx-auto px-8 py-8">
           <Header />
           <Disclaimer />
-          <div className="grid gap-6 lg:grid-cols-3 mt-8">
+          <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-4 mt-8">
             <SearchCard />
             <ChatCard />
+            <TracerCard />
             <PlannerCard />
           </div>
         </div>
@@ -39,15 +42,36 @@ function Sidebar() {
   const items = [
     { label: "Document Search", active: true },
     { label: "AI Chatbot", active: false },
+    { label: "Auto-Tracer", active: false },
     { label: "Task Planner", active: false },
+    { label: "Insights", active: false },
     { label: "Insights", active: false },
   ];
   return (
     <aside className="fixed inset-y-0 left-0 w-64 bg-sidebar text-sidebar-foreground p-6 flex flex-col">
-      <div className="flex items-center gap-2 mb-10">
-        <div className="w-9 h-9 rounded-lg" style={{ background: "var(--gradient-brand)" }} />
+      <div className="flex items-center gap-3 mb-10">
+        <svg viewBox="0 0 24 24" className="w-10 h-10" fill="none" aria-hidden="true">
+          <defs>
+            <linearGradient id="vaiLogoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="oklch(0.68 0.14 200)" />
+              <stop offset="100%" stopColor="oklch(0.68 0.16 155)" />
+            </linearGradient>
+          </defs>
+          <path
+            d="M4 5 L12 20 L20 5"
+            stroke="url(#vaiLogoGradient)"
+            strokeWidth="3"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <circle cx="8" cy="9" r="1" fill="url(#vaiLogoGradient)" />
+          <circle cx="16" cy="9" r="1" fill="url(#vaiLogoGradient)" />
+          <circle cx="12" cy="15" r="1" fill="url(#vaiLogoGradient)" />
+        </svg>
         <div>
-          <div className="font-display font-semibold text-lg leading-tight">VAI Recon</div>
+          <div className="font-display font-semibold text-lg leading-tight">
+            VAI <span style={{ color: "oklch(0.68 0.16 155)" }}>Recon</span>
+          </div>
           <div className="text-xs text-sidebar-muted">Reconciliation AI</div>
         </div>
       </div>
@@ -392,6 +416,109 @@ function PlannerCard() {
               <span className="font-semibold text-primary">Recommendation · </span>
               {result.recommendation}
             </div>
+          )}
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function TracerCard() {
+  const run = useServerFn(autoTracePayment);
+  const [amount, setAmount] = useState("");
+  const [date, setDate] = useState("");
+  const [ref, setRef] = useState("");
+  const [result, setResult] = useState<TraceResult | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [confirmed, setConfirmed] = useState(false);
+
+  async function submit() {
+    if (!amount.trim()) return;
+    setLoading(true);
+    setErr(null);
+    setResult(null);
+    setConfirmed(false);
+    try {
+      setResult(
+        await run({
+          data: {
+            amount: amount.trim(),
+            date: date.trim() || null,
+            reference: ref.trim() || null,
+          },
+        }),
+      );
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Something went wrong");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader
+        step="04 · Trace"
+        title="Auto-Tracer"
+        desc="Match a mystery bank deposit to an open invoice using amount, date, and reference."
+      />
+      <div className="space-y-2">
+        <TextInput
+          placeholder="Amount (e.g. 15500)"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+        />
+        <TextInput
+          type="date"
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+        />
+        <TextInput
+          placeholder="Bank Ref (e.g. 12345)"
+          value={ref}
+          onChange={(e) => setRef(e.target.value)}
+        />
+      </div>
+      <div className="mt-3">
+        <Button onClick={submit} loading={loading}>
+          Trace payment
+        </Button>
+      </div>
+      <ErrorLine msg={err} />
+      {result && (
+        <div className="mt-4 rounded-lg border border-border bg-secondary/50 p-4 text-sm space-y-2">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-primary">
+                Likely match
+              </div>
+              <div className="font-medium mt-0.5">
+                {result.match.invoice} · {result.match.customer}
+              </div>
+              <div className="text-xs text-muted-foreground">{result.match.amount}</div>
+            </div>
+            <ConfidencePill value={result.confidence} />
+          </div>
+          <div className="text-xs text-muted-foreground">
+            <span className="font-semibold text-foreground">Reason: </span>
+            {result.reason}
+          </div>
+          {result.history && (
+            <div className="text-xs text-muted-foreground">
+              <span className="font-semibold text-foreground">History: </span>
+              {result.history}
+            </div>
+          )}
+          {result.confidence >= 50 && (
+            <button
+              onClick={() => setConfirmed(true)}
+              disabled={confirmed}
+              className="mt-1 inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium text-white transition-transform active:scale-[0.98] disabled:opacity-70"
+              style={{ background: "var(--success)" }}
+            >
+              {confirmed ? "✓ Reconciled" : "Confirm & Reconcile"}
+            </button>
           )}
         </div>
       )}
