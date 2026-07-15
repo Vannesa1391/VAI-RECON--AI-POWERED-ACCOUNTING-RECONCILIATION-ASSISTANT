@@ -3,6 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import {
   askChatbot,
+  autoTracePayment,
   prioritizeAccounts,
   searchDocuments,
 } from "@/lib/vai.functions";
