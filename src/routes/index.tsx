@@ -25,11 +25,8 @@ function Dashboard() {
           <Header />
           <Disclaimer />
           <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-3 mt-8">
-            <HealthCard />
             <ResearchCard />
-            <SearchCard />
             <ChatCard />
-            <TracerCard />
             <PlannerCard />
           </div>
         </div>
@@ -40,11 +37,8 @@ function Dashboard() {
 
 function Sidebar() {
   const items = [
-    { label: "Health Dashboard", active: true },
-    { label: "Research Assistant", active: false },
-    { label: "Document Search", active: false },
+    { label: "Research Assistant", active: true },
     { label: "AI Chatbot", active: false },
-    { label: "Auto-Tracer", active: false },
     { label: "Task Planner", active: false },
   ];
   return (
