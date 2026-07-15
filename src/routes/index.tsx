@@ -244,7 +244,7 @@ function ChatCard() {
   return (
     <Card>
       <CardHeader
-        step="02 · Ask"
+        step="01 · Ask"
         title="AI Chatbot"
         desc="Ask VAI in plain English about a specific invoice, customer, or payment."
       />
