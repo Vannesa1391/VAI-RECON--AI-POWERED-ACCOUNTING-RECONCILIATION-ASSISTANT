@@ -298,7 +298,7 @@ function PlannerCard() {
   return (
     <Card>
       <CardHeader
-        step="03 · Plan"
+        step="02 · Plan"
         title="Task Planner"
         desc="Paste unreconciled accounts. VAI ranks them by risk and age."
       />
