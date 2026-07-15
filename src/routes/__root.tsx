@@ -86,10 +86,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:title", content: "VAI Recon — AI Reconciliation Assistant" },
       {
         property: "og:description",
-        content: "Match documents, chat with your ledger, and prioritize unreconciled accounts.",
+        content: "AI-powered accounting reconciliation workspace: match documents, ask the assistant, and prioritize open accounts.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "VAI Recon — AI Reconciliation Assistant" },
+      { name: "twitter:description", content: "AI-powered accounting reconciliation workspace: match documents, ask the assistant, and prioritize open accounts." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/80e70b94-4b56-47d2-a330-45266d1f85e6/id-preview-6198765a--9dd19c51-06aa-4189-8f24-d709a20457f2.lovable.app-1784103425947.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/80e70b94-4b56-47d2-a330-45266d1f85e6/id-preview-6198765a--9dd19c51-06aa-4189-8f24-d709a20457f2.lovable.app-1784103425947.png" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
