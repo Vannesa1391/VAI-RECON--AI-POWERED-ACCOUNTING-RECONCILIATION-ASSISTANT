@@ -76,8 +76,9 @@ export function useVoice() {
       return;
     }
     const rec = new SR();
-    rec.lang = "en-US";
+    rec.lang = "en-ZA";
     rec.interimResults = false;
+    rec.continuous = false;
     rec.maxAlternatives = 1;
     rec.onresult = (e: any) => onResult(e.results[0][0].transcript);
     rec.onend = () => {
@@ -87,6 +88,7 @@ export function useVoice() {
     rec.onerror = () => {
       setListening(false);
       recRef.current = null;
+      alert("Ms V, I didn't catch that. Please try again.");
     };
     recRef.current = rec;
     setListening(true);
