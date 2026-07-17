@@ -243,7 +243,7 @@ function VaiRecon() {
       <header className="vr-header">
         <div className="vr-brand">
           <div className="vr-logo">VAI</div>
-          <div>
+          <div className="vr-title">
             <h1>VAI RECON</h1>
             <p>Voice AI Assistant for Financial Reconciliation</p>
           </div>
