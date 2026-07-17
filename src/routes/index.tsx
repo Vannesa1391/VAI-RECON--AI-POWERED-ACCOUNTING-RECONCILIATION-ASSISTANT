@@ -402,51 +402,58 @@ function VaiRecon() {
 }
 
 const CSS = `
-.vr-root{min-height:100vh;background:linear-gradient(180deg,#0b1220 0%,#0f1e3a 100%);color:#e2e8f0;font-family:'Inter',system-ui,sans-serif;padding:20px;box-sizing:border-box;}
-.vr-header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;margin-bottom:20px;}
-.vr-brand{display:flex;align-items:center;gap:14px;}
-.vr-logo{width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,#0ea5e9,#22c55e);display:grid;place-items:center;font-weight:800;color:#0b1220;font-size:16px;}
-.vr-header h1{margin:0;font-size:22px;color:#60a5fa;font-family:'Space Grotesk',sans-serif;}
-.vr-header p{margin:2px 0 0;color:#94a3b8;font-size:13px;}
-.vr-user{display:flex;align-items:center;gap:10px;}
-.vr-user label{color:#94a3b8;font-size:13px;}
-.vr-user select,.vr-card input,.vr-card textarea{background:#0b1a33;color:#e2e8f0;border:1px solid #1e3a5f;border-radius:10px;padding:10px 12px;font-size:14px;font-family:inherit;}
-.vr-user select{min-width:220px;}
+.vr-root{min-height:100vh;background:
+  radial-gradient(1200px 400px at 10% -10%, rgba(255,255,255,0.25), transparent 60%),
+  radial-gradient(900px 300px at 90% 10%, rgba(255,255,255,0.18), transparent 60%),
+  repeating-linear-gradient(115deg, rgba(255,255,255,0.06) 0 2px, transparent 2px 6px),
+  linear-gradient(135deg,#00A651 0%,#009C3B 100%);
+  color:#ffffff;font-family:'Inter',system-ui,sans-serif;padding:20px;box-sizing:border-box;}
+.vr-header{display:flex;flex-direction:column;align-items:center;gap:12px;margin-bottom:24px;text-align:center;}
+.vr-brand{display:flex;flex-direction:column;align-items:center;gap:10px;}
+.vr-title h1{margin:0;font-size:26px;color:#ffffff;font-family:'Space Grotesk',sans-serif;letter-spacing:1px;}
+.vr-title p{margin:2px 0 0;color:rgba(255,255,255,0.85);font-size:13px;}
+.vr-logo{width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,#ffffff,#e6ffe9);display:grid;place-items:center;font-weight:900;color:#00A651;font-size:22px;box-shadow:0 6px 24px rgba(0,0,0,0.25),inset 0 0 0 3px #22c55e;}
+.vr-user{display:flex;align-items:center;gap:10px;justify-content:center;}
+.vr-user label{color:#ffffff;font-size:13px;}
+.vr-user select,.vr-card input,.vr-card textarea{background:rgba(255,255,255,0.1);color:#ffffff;border:1px solid rgba(255,255,255,0.3);border-radius:10px;padding:10px 12px;font-size:14px;font-family:inherit;backdrop-filter:blur(8px);}
+.vr-user select{min-width:240px;}
+.vr-user select option{color:#0b1220;}
+.vr-card input::placeholder{color:rgba(255,255,255,0.65);}
 .vr-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
 @media (max-width:900px){.vr-grid{grid-template-columns:1fr;}}
-.vr-card{background:rgba(15,30,58,0.7);backdrop-filter:blur(10px);border:1px solid #1e3a5f;border-radius:16px;padding:18px;box-shadow:0 4px 24px rgba(0,0,0,0.25);}
-.vr-card h2{margin:0 0 12px;font-size:16px;color:#93c5fd;font-family:'Space Grotesk',sans-serif;}
+.vr-card{background:rgba(255,255,255,0.12);backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,0.25);border-radius:16px;padding:18px;box-shadow:0 8px 32px rgba(0,0,0,0.2);}
+.vr-card h2{margin:0 0 12px;font-size:16px;color:#ffffff;font-family:'Space Grotesk',sans-serif;}
 .vr-row-between{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap;}
-.vr-messages{background:#0b1a33;border:1px solid #1e3a5f;border-radius:12px;padding:12px;height:280px;overflow-y:auto;font-size:14px;}
-.vr-msg{margin:6px 0;padding:8px 10px;border-radius:8px;line-height:1.4;}
-.vr-msg-you{background:#1e3a5f;}
-.vr-msg-vai{background:#132b52;border-left:3px solid #22c55e;}
-.vr-speaker{background:transparent;border:none;color:#94a3b8;cursor:pointer;margin-left:6px;font-size:14px;}
+.vr-messages{background:rgba(0,0,0,0.15);border:1px solid rgba(255,255,255,0.2);border-radius:12px;padding:12px;height:280px;overflow-y:auto;font-size:14px;}
+.vr-msg{margin:6px 0;padding:8px 10px;border-radius:8px;line-height:1.4;color:#ffffff;}
+.vr-msg-you{background:rgba(255,255,255,0.15);}
+.vr-msg-vai{background:rgba(0,0,0,0.25);border-left:3px solid #22c55e;}
+.vr-speaker{background:transparent;border:none;color:#ffffff;cursor:pointer;margin-left:6px;font-size:14px;}
 .vr-input-row{display:flex;gap:8px;margin-top:10px;}
 .vr-input-row input{flex:1;}
-.vr-mic{width:44px;height:44px;border-radius:50%;border:none;background:linear-gradient(135deg,#0ea5e9,#22c55e);color:white;font-size:18px;cursor:pointer;}
-.vr-mic.listening{background:#ef4444;animation:pulse 1s infinite;}
+.vr-mic{width:44px;height:44px;border-radius:50%;border:none;background:rgba(255,255,255,0.2);color:white;font-size:18px;cursor:pointer;transition:background 0.2s;}
+.vr-mic.listening{background:#22c55e;animation:pulse 1s infinite;box-shadow:0 0 20px #22c55e;}
 @keyframes pulse{0%,100%{transform:scale(1);}50%{transform:scale(1.08);}}
-.vr-send,.vr-primary{background:#22c55e;color:#052e16;border:none;padding:10px 16px;border-radius:10px;font-weight:600;cursor:pointer;font-family:inherit;}
-.vr-send:hover,.vr-primary:hover{background:#16a34a;color:white;}
+.vr-send,.vr-primary{background:#22c55e;color:#ffffff;border:none;padding:10px 16px;border-radius:10px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 4px 12px rgba(34,197,94,0.4);}
+.vr-send:hover,.vr-primary:hover{background:#16a34a;}
 .vr-tablewrap{overflow-x:auto;}
-.vr-card table{width:100%;border-collapse:collapse;font-size:14px;}
-.vr-card th,.vr-card td{padding:8px 10px;text-align:left;border-bottom:1px solid #1e3a5f;}
-.vr-card th{color:#94a3b8;font-weight:500;font-size:12px;text-transform:uppercase;}
-.vr-warn td{background:rgba(239,68,68,0.08);}
+.vr-card table{width:100%;border-collapse:collapse;font-size:14px;color:#ffffff;}
+.vr-card th,.vr-card td{padding:8px 10px;text-align:left;border-bottom:1px solid rgba(255,255,255,0.2);}
+.vr-card th{color:rgba(255,255,255,0.85);font-weight:600;font-size:12px;text-transform:uppercase;}
+.vr-warn td{background:rgba(0,0,0,0.2);}
 .vr-quick{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;}
-.vr-quick button{background:#1e3a5f;color:#e2e8f0;border:1px solid #1e3a5f;padding:6px 12px;border-radius:8px;cursor:pointer;font-size:13px;}
-.vr-quick button:hover{background:#2a4a75;}
-.vr-link{background:none;border:none;color:#60a5fa;cursor:pointer;font-size:13px;}
-.vr-hint{color:#94a3b8;font-size:13px;margin:0 0 10px;}
-.vr-empty{color:#64748b;font-style:italic;font-size:13px;}
+.vr-quick button{background:rgba(255,255,255,0.15);color:#ffffff;border:1px solid rgba(255,255,255,0.3);padding:6px 12px;border-radius:8px;cursor:pointer;font-size:13px;}
+.vr-quick button:hover{background:rgba(255,255,255,0.25);}
+.vr-link{background:none;border:none;color:#ffffff;cursor:pointer;font-size:13px;text-decoration:underline;}
+.vr-hint{color:rgba(255,255,255,0.85);font-size:13px;margin:0 0 10px;}
+.vr-empty{color:rgba(255,255,255,0.7);font-style:italic;font-size:13px;}
 .vr-tasks{list-style:none;padding:0;margin:0;}
-.vr-tasks li{display:flex;justify-content:space-between;padding:8px 10px;background:#0b1a33;border-radius:8px;margin-bottom:6px;font-size:14px;}
-.vr-when{color:#22c55e;font-weight:600;font-size:13px;}
+.vr-tasks li{display:flex;justify-content:space-between;padding:8px 10px;background:rgba(0,0,0,0.2);border-radius:8px;margin-bottom:6px;font-size:14px;color:#ffffff;}
+.vr-when{color:#22c55e;font-weight:700;font-size:13px;}
 .vr-email{display:flex;flex-direction:column;gap:10px;margin-top:8px;}
 .vr-field{display:flex;flex-direction:column;gap:4px;}
-.vr-field label{font-size:12px;color:#94a3b8;}
-.vr-email textarea{background:#0b1a33;color:#e2e8f0;border:1px solid #1e3a5f;border-radius:10px;padding:10px 12px;font-family:inherit;font-size:13px;white-space:pre-wrap;}
-.vr-status{color:#22c55e;font-size:13px;font-weight:600;}
-.vr-footer{margin-top:20px;text-align:center;color:#64748b;font-size:12px;}
+.vr-field label{font-size:12px;color:rgba(255,255,255,0.85);}
+.vr-email textarea{background:rgba(0,0,0,0.2);color:#ffffff;border:1px solid rgba(255,255,255,0.3);border-radius:10px;padding:10px 12px;font-family:inherit;font-size:13px;white-space:pre-wrap;}
+.vr-status{color:#ffffff;font-size:13px;font-weight:700;}
+.vr-footer{margin-top:20px;text-align:center;color:rgba(255,255,255,0.8);font-size:12px;}
 `;
