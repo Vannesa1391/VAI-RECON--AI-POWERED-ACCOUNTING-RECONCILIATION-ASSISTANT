@@ -1,597 +1,452 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useServerFn } from "@tanstack/react-start";
-import { useEffect, useState } from "react";
-import { Mic, MicOff, Volume2, Square } from "lucide-react";
-import {
-  askChatbot,
-  autoTracePayment,
-  prioritizeAccounts,
-} from "@/lib/vai.functions";
-import { useVoice, timeGreeting } from "@/hooks/use-voice";
-import bgImage from "@/assets/vai-bg.jpg";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 export const Route = createFileRoute("/")({
-  component: Dashboard,
+  component: VaiRecon,
+  head: () => ({
+    meta: [
+      { title: "VAI RECON — Voice AI Assistant for Financial Reconciliation" },
+      {
+        name: "description",
+        content:
+          "Voice-driven reconciliation assistant: smart search, task planning, and email tracking for finance teams.",
+      },
+    ],
+  }),
 });
 
-type ChatResult = Awaited<ReturnType<typeof askChatbot>>;
-type PrioritizeResult = Awaited<ReturnType<typeof prioritizeAccounts>>;
-type TraceResult = Awaited<ReturnType<typeof autoTracePayment>>;
+type User = { id: string; name: string; title: string; email: string };
+type Msg = { who: "you" | "vai"; text: string };
+type Payment = { date: string; client: string; amount: number; ref: string };
+type Task = { id: number; text: string; when: string };
 
-function Dashboard() {
-  const [voiceMode, setVoiceMode] = useState(false);
-  const voice = useVoice();
-  const [greeting] = useState(() => timeGreeting("Ms V"));
+const USERS: User[] = [
+  { id: "v", name: "Ms V", title: "Finance Manager", email: "v@company.co.za" },
+  { id: "d", name: "Ms Dineo", title: "Senior Accountant", email: "dineo@company.co.za" },
+  { id: "k", name: "Mr K", title: "Reconciliation Officer", email: "k@company.co.za" },
+];
 
-  // Greet on load once voices are ready.
+const PAYMENTS: Payment[] = [
+  { date: "16 Jul 2026", client: "Vuma", amount: 12450, ref: "Missing" },
+  { date: "16 Jul 2026", client: "Vuma", amount: 12450, ref: "Missing" },
+  { date: "15 Jul 2026", client: "MTN", amount: 5000, ref: "INV-1001" },
+  { date: "14 Jul 2026", client: "Telkom", amount: 5000, ref: "INV-1002" },
+  { date: "14 Jul 2026", client: "Telkom", amount: 5000, ref: "INV-1002" },
+  { date: "12 Jul 2026", client: "Vodacom", amount: 8700, ref: "Missing" },
+];
+
+function greetFor(name: string) {
+  const h = new Date().getHours();
+  const part = h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
+  return `${part} ${name}, I am VAI. How can I help with your reconciliation today?`;
+}
+
+function pickVoice(): SpeechSynthesisVoice | null {
+  if (typeof window === "undefined" || !("speechSynthesis" in window)) return null;
+  const voices = window.speechSynthesis.getVoices();
+  if (!voices.length) return null;
+  const za = voices.find((v) => /en-ZA/i.test(v.lang));
+  if (za) return za;
+  const en = voices.filter((v) => v.lang.toLowerCase().startsWith("en"));
+  const female = en.find((v) => /female|zira|aria|jenny|samantha|karen|victoria/i.test(v.name));
+  return female ?? en[0] ?? voices[0];
+}
+
+function speak(text: string) {
+  if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  const v = pickVoice();
+  if (v) u.voice = v;
+  u.lang = "en-ZA";
+  u.rate = 1;
+  u.pitch = 1.05;
+  window.speechSynthesis.speak(u);
+}
+
+function VaiRecon() {
+  const [userId, setUserId] = useState("v");
+  const user = USERS.find((u) => u.id === userId)!;
+  const [messages, setMessages] = useState<Msg[]>([]);
+  const [input, setInput] = useState("");
+  const [listening, setListening] = useState(false);
+  const [filtered, setFiltered] = useState<Payment[] | null>(null);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [emailOpen, setEmailOpen] = useState(false);
+  const [emailTo, setEmailTo] = useState("client@vuma.co.za");
+  const [emailCc, setEmailCc] = useState("");
+  const [emailStatus, setEmailStatus] = useState<string>("");
+  const recRef = useRef<any>(null);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+  const greetedRef = useRef<string>("");
+
+  // Warm up voices
   useEffect(() => {
-    const t = setTimeout(() => voice.speak(greeting), 400);
-    return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      window.speechSynthesis.getVoices();
+      window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+    }
   }, []);
 
-  return (
-    <div
-      className="min-h-screen relative"
-      style={{
-        backgroundImage: `url(${bgImage})`,
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-        backgroundAttachment: "fixed",
-      }}
-    >
-      <div className="absolute inset-0 bg-[oklch(0.22_0.09_155/0.55)] pointer-events-none" />
-      <div className="relative flex min-h-screen">
-        <Sidebar />
-        <main className="flex-1 ml-64">
-          <TopBar voiceMode={voiceMode} setVoiceMode={setVoiceMode} />
-          <div className="max-w-7xl mx-auto px-8 py-8">
-            <Header greeting={greeting} onReplay={() => voice.speak(greeting)} />
-            <Disclaimer />
-            <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-3 mt-8">
-              <ResearchCard voiceMode={voiceMode} voice={voice} />
-              <ChatCard voiceMode={voiceMode} voice={voice} />
-              <PlannerCard voiceMode={voiceMode} voice={voice} />
-            </div>
-          </div>
-        </main>
-      </div>
-    </div>
-  );
-}
+  // Greet on user change
+  useEffect(() => {
+    if (greetedRef.current === user.id) return;
+    greetedRef.current = user.id;
+    const g = greetFor(user.name);
+    setMessages((m) => [...m, { who: "vai", text: g }]);
+    speak(g);
+  }, [user.id, user.name]);
 
-function Sidebar() {
-  const items = [
-    { label: "Research Assistant", active: true },
-    { label: "AI Chatbot", active: false },
-    { label: "Task Planner", active: false },
-  ];
-  return (
-    <aside className="fixed inset-y-0 left-0 w-64 bg-[oklch(0.18_0.06_155/0.85)] backdrop-blur-xl text-white p-6 flex flex-col border-r border-white/10 z-10">
-      <div className="flex items-center gap-3 mb-10">
-        <svg viewBox="0 0 24 24" className="w-10 h-10" fill="none" aria-hidden="true">
-          <defs>
-            <linearGradient id="vaiLogoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="oklch(0.85 0.2 130)" />
-              <stop offset="100%" stopColor="oklch(0.68 0.16 155)" />
-            </linearGradient>
-          </defs>
-          <path
-            d="M4 5 L12 20 L20 5"
-            stroke="url(#vaiLogoGradient)"
-            strokeWidth="3"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-          <circle cx="8" cy="9" r="1" fill="url(#vaiLogoGradient)" />
-          <circle cx="16" cy="9" r="1" fill="url(#vaiLogoGradient)" />
-          <circle cx="12" cy="15" r="1" fill="url(#vaiLogoGradient)" />
-        </svg>
-        <div>
-          <div className="font-display font-semibold text-lg leading-tight">
-            VAI <span style={{ color: "oklch(0.85 0.2 130)" }}>Recon</span>
-          </div>
-          <div className="text-xs text-white/60">Reconciliation AI</div>
-        </div>
-      </div>
-      <nav className="space-y-1">
-        {items.map((it) => (
-          <div
-            key={it.label}
-            className={`px-3 py-2.5 rounded-lg text-sm cursor-pointer transition-colors ${
-              it.active
-                ? "bg-white/10 text-white font-medium"
-                : "text-white/60 hover:bg-white/5 hover:text-white"
-            }`}
-          >
-            {it.label}
-          </div>
-        ))}
-      </nav>
-      <div className="mt-auto text-xs text-white/60">
-        <div className="border-t border-white/10 pt-4">
-          <div className="font-medium text-white">Finance Team</div>
-          <div>March 2026 close</div>
-        </div>
-      </div>
-    </aside>
-  );
-}
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
-function TopBar({
-  voiceMode,
-  setVoiceMode,
-}: {
-  voiceMode: boolean;
-  setVoiceMode: (v: boolean) => void;
-}) {
-  return (
-    <div className="h-14 border-b border-white/10 bg-white/5 backdrop-blur-xl flex items-center justify-between px-8">
-      <div className="text-sm text-white/70">
-        Workspace <span className="text-white font-medium">/ March 2026</span>
-      </div>
-      <div className="flex items-center gap-4 text-sm">
-        <button
-          onClick={() => setVoiceMode(!voiceMode)}
-          className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border transition ${
-            voiceMode
-              ? "bg-[oklch(0.85_0.2_130)] text-[oklch(0.18_0.06_155)] border-transparent shadow-[0_0_20px_oklch(0.85_0.2_130/0.5)]"
-              : "bg-white/5 text-white/80 border-white/20 hover:bg-white/10"
-          }`}
-        >
-          <span
-            className={`w-1.5 h-1.5 rounded-full ${voiceMode ? "bg-[oklch(0.18_0.06_155)]" : "bg-white/50"}`}
-          />
-          Voice Mode {voiceMode ? "ON" : "OFF"}
-        </button>
-        <div className="w-8 h-8 rounded-full bg-[oklch(0.85_0.2_130)]/20 text-[oklch(0.85_0.2_130)] grid place-items-center text-xs font-semibold border border-white/10">
-          MV
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function Header({ greeting, onReplay }: { greeting: string; onReplay: () => void }) {
-  return (
-    <div>
-      <div className="text-xs uppercase tracking-wider text-[oklch(0.85_0.2_130)] font-semibold">
-        Dashboard
-      </div>
-      <div className="mt-2 flex items-start gap-3">
-        <h1 className="text-4xl font-display font-semibold text-white max-w-3xl leading-tight">
-          {greeting}
-        </h1>
-        <button
-          onClick={onReplay}
-          aria-label="Replay greeting"
-          className="mt-2 inline-flex items-center justify-center w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-white transition"
-        >
-          <Volume2 className="w-4 h-4" />
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function Disclaimer() {
-  return (
-    <div className="mt-6 flex items-start gap-3 rounded-xl border border-white/20 bg-white/10 backdrop-blur px-4 py-3 text-sm">
-      <div className="w-1.5 h-1.5 rounded-full bg-[oklch(0.85_0.2_130)] mt-1.5" />
-      <div className="text-white/90">
-        AI-generated content may require human review before you post to the ledger.
-      </div>
-    </div>
-  );
-}
-
-function GlassCard({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="rounded-2xl border border-white/20 bg-white/10 backdrop-blur-xl p-6 flex flex-col shadow-[0_8px_40px_rgb(0_0_0/0.25)]">
-      {children}
-    </div>
-  );
-}
-
-function CardHeader({ step, title, desc }: { step: string; title: string; desc: string }) {
-  return (
-    <div className="mb-4">
-      <div className="text-[10px] font-semibold uppercase tracking-wider text-[oklch(0.85_0.2_130)]">
-        {step}
-      </div>
-      <h3 className="mt-1 font-display font-semibold text-lg text-white">{title}</h3>
-      <p className="text-sm text-white/70 mt-0.5">{desc}</p>
-    </div>
-  );
-}
-
-const inputCls =
-  "w-full px-3.5 py-2.5 rounded-lg border border-white/25 bg-white/10 text-sm text-white placeholder:text-white/50 outline-none focus:border-[oklch(0.85_0.2_130)] focus:ring-2 focus:ring-[oklch(0.85_0.2_130)]/30 transition backdrop-blur";
-
-function TextInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
-  return <input {...props} className={inputCls} />;
-}
-
-function TextArea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  return <textarea {...props} className={`${inputCls} resize-none font-mono`} />;
-}
-
-function MicButton({
-  onText,
-  listening,
-  onClick,
-}: {
-  onText: (t: string) => void;
-  listening: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={listening ? "Stop listening" : "Start voice input"}
-      className={`inline-flex items-center justify-center w-10 h-10 rounded-lg border transition ${
-        listening
-          ? "bg-[oklch(0.85_0.2_130)] text-[oklch(0.18_0.06_155)] border-transparent animate-pulse"
-          : "bg-white/10 text-white border-white/25 hover:bg-white/20"
-      }`}
-    >
-      {listening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
-    </button>
-  );
-}
-
-function SpeakerButton({
-  text,
-  voice,
-}: {
-  text: string;
-  voice: ReturnType<typeof useVoice>;
-}) {
-  if (!text) return null;
-  return (
-    <button
-      type="button"
-      onClick={() => (voice.speaking ? voice.stop() : voice.speak(text))}
-      aria-label={voice.speaking ? "Stop reading" : "Read aloud"}
-      className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 border border-white/25 text-white transition"
-    >
-      {voice.speaking ? <Square className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
-    </button>
-  );
-}
-
-function Button({
-  children,
-  loading,
-  ...props
-}: React.ButtonHTMLAttributes<HTMLButtonElement> & { loading?: boolean }) {
-  return (
-    <button
-      {...props}
-      disabled={loading || props.disabled}
-      className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold text-[oklch(0.18_0.06_155)] disabled:opacity-60 disabled:cursor-not-allowed transition-transform active:scale-[0.98] shadow-[0_0_24px_oklch(0.85_0.2_130/0.4)]"
-      style={{
-        background:
-          "linear-gradient(135deg, oklch(0.9 0.2 130) 0%, oklch(0.78 0.22 140) 100%)",
-      }}
-    >
-      {loading && (
-        <span className="w-3.5 h-3.5 rounded-full border-2 border-[oklch(0.18_0.06_155)]/40 border-t-[oklch(0.18_0.06_155)] animate-spin" />
-      )}
-      {children}
-    </button>
-  );
-}
-
-function ErrorLine({ msg }: { msg: string | null }) {
-  if (!msg) return null;
-  return (
-    <div className="mt-3 text-xs text-white bg-red-500/40 border border-red-300/40 rounded-md px-3 py-2">
-      {msg}
-    </div>
-  );
-}
-
-function ConfidencePill({ value }: { value: number }) {
-  const color =
-    value >= 90 ? "oklch(0.85 0.2 130)" : value >= 70 ? "oklch(0.8 0.15 200)" : "oklch(0.85 0.15 80)";
-  return (
-    <div
-      className="shrink-0 text-[11px] font-semibold px-2 py-1 rounded-md"
-      style={{ color, background: `color-mix(in oklab, ${color} 18%, transparent)` }}
-    >
-      {Math.round(value)}%
-    </div>
-  );
-}
-
-type VoiceProps = { voiceMode: boolean; voice: ReturnType<typeof useVoice> };
-
-function ChatCard({ voiceMode, voice }: VoiceProps) {
-  const run = useServerFn(askChatbot);
-  const [q, setQ] = useState("");
-  const [result, setResult] = useState<ChatResult | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
-
-  async function submit() {
-    if (!q.trim()) return;
-    setLoading(true);
-    setErr(null);
-    setResult(null);
-    try {
-      const r = await run({ data: { question: q.trim() } });
-      setResult(r);
-      if (voiceMode) voice.speak(r.text);
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : "Something went wrong");
-    } finally {
-      setLoading(false);
-    }
+  function addVai(text: string) {
+    setMessages((m) => [...m, { who: "vai", text }]);
+    speak(text);
   }
 
-  return (
-    <GlassCard>
-      <CardHeader
-        step="01 · Ask"
-        title="AI Chatbot"
-        desc="Ask VAI in plain English about a specific invoice, customer, or payment."
-      />
-      <div className="flex items-center gap-2">
-        <TextInput
-          placeholder="Find proof of payment for INV-2035"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && submit()}
-        />
-        <MicButton
-          listening={voice.listening}
-          onClick={() => voice.listen((t) => setQ(t))}
-          onText={setQ}
-        />
-      </div>
-      <div className="mt-3">
-        <Button onClick={submit} loading={loading}>
-          Ask VAI
-        </Button>
-      </div>
-      <ErrorLine msg={err} />
-      {result && (
-        <div className="mt-4 rounded-lg bg-white/10 border border-white/20 p-4 text-sm text-white/95 whitespace-pre-wrap leading-relaxed">
-          <div className="flex items-center justify-between mb-1.5">
-            <div className="text-[10px] font-semibold uppercase tracking-wider text-[oklch(0.85_0.2_130)]">
-              VAI
-            </div>
-            <SpeakerButton text={result.text} voice={voice} />
-          </div>
-          {result.text}
-        </div>
-      )}
-    </GlassCard>
-  );
-}
+  function handleCommand(raw: string) {
+    const text = raw.trim();
+    if (!text) return;
+    setMessages((m) => [...m, { who: "you", text }]);
+    const q = text.toLowerCase();
 
-function PlannerCard({ voiceMode, voice }: VoiceProps) {
-  const run = useServerFn(prioritizeAccounts);
-  const [text, setText] = useState(
-    "ABC Retail — 60 days — R42,500\nXYZ Stores — 45 days — R18,900\nDelta Foods — 12 days — R6,200\nOmega Traders — 90 days — R31,000",
-  );
-  const [result, setResult] = useState<PrioritizeResult | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
-
-  async function submit() {
-    if (!text.trim()) return;
-    setLoading(true);
-    setErr(null);
-    setResult(null);
-    try {
-      const r = await run({ data: { accounts: text.trim() } });
-      setResult(r);
-      if (voiceMode) {
-        const spoken = `Top priorities. ${r.priorities
-          .slice(0, 3)
-          .map((p) => `${p.rank}. ${p.account}, ${p.age_days} days overdue.`)
-          .join(" ")} ${r.recommendation ?? ""}`;
-        voice.speak(spoken);
-      }
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : "Something went wrong");
-    } finally {
-      setLoading(false);
+    // Task: remind me / remember / add task
+    const remindMatch = q.match(/(?:remind me to|remember to|add task)\s+(.*)/i);
+    if (remindMatch) {
+      const timeMatch = text.match(/\b(?:at\s+)?(\d{1,2}(?::\d{2})?\s*(?:am|pm)?)/i);
+      const when = timeMatch ? timeMatch[1] : "today";
+      const taskText = remindMatch[1].replace(/\bat\s+\d{1,2}(?::\d{2})?\s*(?:am|pm)?/i, "").trim();
+      const t: Task = { id: Date.now(), text: taskText || text, when };
+      setTasks((ts) => [t, ...ts]);
+      addVai(`Task saved: ${t.text} at ${when}.`);
+      return;
     }
-  }
 
-  const spokenSummary = result
-    ? `Top priorities. ${result.priorities
-        .map((p) => `${p.rank}. ${p.account}, ${p.age_days} days overdue. ${p.action}`)
-        .join(" ")} ${result.recommendation ?? ""}`
-    : "";
-
-  return (
-    <GlassCard>
-      <CardHeader
-        step="02 · Plan"
-        title="Task Planner"
-        desc="Paste unreconciled accounts. VAI ranks them by risk and age."
-      />
-      <div className="flex items-start gap-2">
-        <TextArea
-          rows={5}
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder="One account per line: customer — age — amount"
-        />
-        <MicButton
-          listening={voice.listening}
-          onClick={() =>
-            voice.listen((t) => setText((prev) => (prev ? prev + "\n" + t : t)))
-          }
-          onText={(t) => setText(t)}
-        />
-      </div>
-      <div className="mt-3">
-        <Button onClick={submit} loading={loading}>
-          Prioritize accounts
-        </Button>
-      </div>
-      <ErrorLine msg={err} />
-      {result && (
-        <div className="mt-4 space-y-2">
-          <div className="flex justify-end">
-            <SpeakerButton text={spokenSummary} voice={voice} />
-          </div>
-          {result.priorities.map((p) => (
-            <div
-              key={p.rank}
-              className="rounded-lg border border-white/20 bg-white/10 px-3 py-2.5 text-sm flex items-start gap-3 text-white"
-            >
-              <div className="w-7 h-7 rounded-md bg-[oklch(0.85_0.2_130)] text-[oklch(0.18_0.06_155)] grid place-items-center text-xs font-semibold shrink-0">
-                {p.rank}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-medium">{p.account}</span>
-                  <span className="text-[11px] text-white/60">{p.age_days}d overdue</span>
-                </div>
-                <div className="text-xs text-white/70 mt-0.5">{p.action}</div>
-              </div>
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-[oklch(0.85_0.15_80)] shrink-0">
-                {p.risk}
-              </div>
-            </div>
-          ))}
-          {result.recommendation && (
-            <div className="mt-2 rounded-lg border-l-2 border-[oklch(0.85_0.2_130)] bg-[oklch(0.85_0.2_130)]/10 px-3 py-2 text-xs text-white">
-              <span className="font-semibold text-[oklch(0.85_0.2_130)]">Recommendation · </span>
-              {result.recommendation}
-            </div>
-          )}
-        </div>
-      )}
-    </GlassCard>
-  );
-}
-
-function ResearchCard({ voiceMode, voice }: VoiceProps) {
-  const run = useServerFn(autoTracePayment);
-  const [amount, setAmount] = useState("");
-  const [date, setDate] = useState("");
-  const [ref, setRef] = useState("");
-  const [result, setResult] = useState<TraceResult | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
-
-  async function submit() {
-    if (!amount.trim()) return;
-    setLoading(true);
-    setErr(null);
-    setResult(null);
-    try {
-      const r = await run({
-        data: {
-          amount: amount.trim(),
-          date: date.trim() || null,
-          reference: ref.trim() || null,
-        },
+    if (/duplicate/i.test(q)) {
+      const seen = new Map<string, number>();
+      PAYMENTS.forEach((p) => {
+        const k = `${p.client}|${p.amount}|${p.ref}`;
+        seen.set(k, (seen.get(k) ?? 0) + 1);
       });
-      setResult(r);
-      if (voiceMode) {
-        voice.speak(
-          `Best match: ${r.match.invoice} for ${r.match.customer}, ${r.match.amount}. Confidence ${Math.round(
-            r.confidence,
-          )} percent. ${r.reason}`,
-        );
-      }
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : "Something went wrong");
-    } finally {
-      setLoading(false);
+      const dupes = PAYMENTS.filter((p) => (seen.get(`${p.client}|${p.amount}|${p.ref}`) ?? 0) > 1);
+      setFiltered(dupes);
+      addVai(`Found ${dupes.length} duplicate payments across Vuma and Telkom.`);
+      return;
     }
+
+    if (/missing/i.test(q) && /(ref|reference)/i.test(q)) {
+      const rows = PAYMENTS.filter((p) => /missing/i.test(p.ref));
+      setFiltered(rows);
+      addVai(`Found ${rows.length} payments with a missing reference.`);
+      return;
+    }
+
+    const clientMatch = ["Vuma", "MTN", "Telkom", "Vodacom"].find((c) =>
+      q.includes(c.toLowerCase()),
+    );
+    if (clientMatch && /(find|show|payment|from)/i.test(q)) {
+      const rows = PAYMENTS.filter((p) => p.client === clientMatch);
+      setFiltered(rows);
+      addVai(`Showing ${rows.length} payment${rows.length === 1 ? "" : "s"} from ${clientMatch}.`);
+      return;
+    }
+
+    if (/clear|reset|all payments/i.test(q)) {
+      setFiltered(null);
+      addVai("Showing all payments.");
+      return;
+    }
+
+    if (/email|draft/i.test(q)) {
+      setEmailOpen(true);
+      addVai("Draft email ready. Please review the recipient and hit Send & Track.");
+      return;
+    }
+
+    addVai(
+      "I can find payments by client, find duplicates, find missing references, save reminders, or draft emails.",
+    );
   }
 
-  const spoken = result
-    ? `Best match: ${result.match.invoice} for ${result.match.customer}, ${result.match.amount}. Confidence ${Math.round(
-        result.confidence,
-      )} percent. Pattern: ${result.reason}. ${result.history ?? ""}`
-    : "";
+  function toggleMic() {
+    const SR =
+      (typeof window !== "undefined" &&
+        ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition)) ||
+      null;
+    if (!SR) {
+      alert("Voice input not supported here. Try Chrome or Edge.");
+      return;
+    }
+    if (recRef.current) {
+      try {
+        recRef.current.stop();
+      } catch {}
+      recRef.current = null;
+      setListening(false);
+      return;
+    }
+    const rec = new SR();
+    rec.lang = "en-ZA";
+    rec.interimResults = false;
+    rec.continuous = false;
+    rec.onresult = (e: any) => {
+      const t = e.results[0][0].transcript;
+      handleCommand(t);
+    };
+    rec.onend = () => {
+      setListening(false);
+      recRef.current = null;
+    };
+    rec.onerror = () => {
+      setListening(false);
+      recRef.current = null;
+    };
+    recRef.current = rec;
+    setListening(true);
+    rec.start();
+  }
+
+  function submitInput(e: React.FormEvent) {
+    e.preventDefault();
+    if (!input.trim()) return;
+    handleCommand(input);
+    setInput("");
+  }
+
+  function draftEmail() {
+    setEmailOpen(true);
+    setEmailStatus("");
+  }
+
+  function sendAndTrack() {
+    setEmailStatus("📡 Tracking for replies...");
+    addVai("Email sent. I am tracking for replies.");
+    setTimeout(() => {
+      const reply = "Reply received: Reference is INV-VUMA-2231";
+      setEmailStatus("✅ " + reply);
+      addVai(reply);
+    }, 5000);
+  }
+
+  const rows = filtered ?? PAYMENTS;
+  const emailBody = useMemo(
+    () =>
+      `Dear Client,\n\nWe received a payment on 16 Jul 2026 for R12,450.00 without a reference. Please share the invoice reference so we can allocate it correctly.\n\nKind regards,\n${user.name}\n${user.title}\n${user.email}`,
+    [user],
+  );
 
   return (
-    <GlassCard>
-      <CardHeader
-        step="01 · Research"
-        title="AI Research Assistant"
-        desc="Analyzes bank data to identify mystery payments — no manual searching needed."
-      />
-      <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <TextInput
-            placeholder="Amount (e.g. 15500)"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-          />
-          <MicButton
-            listening={voice.listening}
-            onClick={() =>
-              voice.listen((t) => setAmount(t.replace(/[^0-9.]/g, "") || t))
-            }
-            onText={setAmount}
-          />
-        </div>
-        <TextInput
-          type="date"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-        />
-        <div className="flex items-center gap-2">
-          <TextInput
-            placeholder="Bank Ref (e.g. 12345 or blank)"
-            value={ref}
-            onChange={(e) => setRef(e.target.value)}
-          />
-          <MicButton
-            listening={voice.listening}
-            onClick={() => voice.listen((t) => setRef(t))}
-            onText={setRef}
-          />
-        </div>
-      </div>
-      <div className="mt-3">
-        <Button onClick={submit} loading={loading}>
-          Research payment
-        </Button>
-      </div>
-      <ErrorLine msg={err} />
-      {result && (
-        <div className="mt-4 rounded-lg border border-white/20 bg-white/10 p-4 text-sm space-y-2 text-white">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-[oklch(0.85_0.2_130)]">
-                AI insight
-              </div>
-              <div className="font-medium mt-0.5">
-                {result.match.invoice} · {result.match.customer}
-              </div>
-              <div className="text-xs text-white/70">{result.match.amount}</div>
-            </div>
-            <div className="flex items-center gap-2">
-              <ConfidencePill value={result.confidence} />
-              <SpeakerButton text={spoken} voice={voice} />
-            </div>
+    <div className="vr-root">
+      <style>{CSS}</style>
+      <header className="vr-header">
+        <div className="vr-brand">
+          <div className="vr-logo">VAI</div>
+          <div>
+            <h1>VAI RECON</h1>
+            <p>Voice AI Assistant for Financial Reconciliation</p>
           </div>
-          <div className="text-xs text-white/80">
-            <span className="font-semibold text-white">Pattern: </span>
-            {result.reason}
+        </div>
+        <div className="vr-user">
+          <label>User</label>
+          <select value={userId} onChange={(e) => setUserId(e.target.value)}>
+            {USERS.map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.name} — {u.title}
+              </option>
+            ))}
+          </select>
+        </div>
+      </header>
+
+      <main className="vr-grid">
+        {/* Chat */}
+        <section className="vr-card vr-chat">
+          <h2>🎙️ Voice Chatbot</h2>
+          <div className="vr-messages">
+            {messages.map((m, i) => (
+              <div key={i} className={`vr-msg vr-msg-${m.who}`}>
+                <strong>{m.who === "you" ? user.name : "VAI"}:</strong> {m.text}
+                {m.who === "vai" && (
+                  <button className="vr-speaker" onClick={() => speak(m.text)} title="Replay">
+                    🔊
+                  </button>
+                )}
+              </div>
+            ))}
+            <div ref={chatEndRef} />
           </div>
-          {result.history && (
-            <div className="text-xs text-white/80">
-              <span className="font-semibold text-white">Customer history: </span>
-              {result.history}
+          <form className="vr-input-row" onSubmit={submitInput}>
+            <button
+              type="button"
+              onClick={toggleMic}
+              className={`vr-mic ${listening ? "listening" : ""}`}
+              title="Push to talk"
+            >
+              {listening ? "🔴" : "🎤"}
+            </button>
+            <input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder='Try: "Find payment from Vuma" or "Remind me to reconcile at 9AM"'
+            />
+            <button type="submit" className="vr-send">
+              Send
+            </button>
+          </form>
+        </section>
+
+        {/* Payments */}
+        <section className="vr-card">
+          <div className="vr-row-between">
+            <h2>🔍 Smart Search — Bank Data (July 2026)</h2>
+            {filtered && (
+              <button className="vr-link" onClick={() => setFiltered(null)}>
+                Show all
+              </button>
+            )}
+          </div>
+          <div className="vr-tablewrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Client</th>
+                  <th>Amount</th>
+                  <th>Reference</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((p, i) => (
+                  <tr key={i} className={p.ref === "Missing" ? "vr-warn" : ""}>
+                    <td>{p.date}</td>
+                    <td>{p.client}</td>
+                    <td>R{p.amount.toLocaleString()}</td>
+                    <td>{p.ref}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="vr-quick">
+            <button onClick={() => handleCommand("Find payment from Vuma")}>Vuma payments</button>
+            <button onClick={() => handleCommand("Find duplicates")}>Find duplicates</button>
+            <button onClick={() => handleCommand("Find missing reference")}>Missing refs</button>
+          </div>
+        </section>
+
+        {/* Tasks */}
+        <section className="vr-card">
+          <h2>📋 Task Planner</h2>
+          <p className="vr-hint">
+            Say or type: <em>"Remind me to reconcile at 9AM"</em>
+          </p>
+          {tasks.length === 0 ? (
+            <p className="vr-empty">No tasks yet.</p>
+          ) : (
+            <ul className="vr-tasks">
+              {tasks.map((t) => (
+                <li key={t.id}>
+                  <span>✓ {t.text}</span>
+                  <span className="vr-when">{t.when}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        {/* Email */}
+        <section className="vr-card">
+          <div className="vr-row-between">
+            <h2>✉️ Email Generator & Tracking</h2>
+            <button className="vr-primary" onClick={draftEmail}>
+              Draft email to client
+            </button>
+          </div>
+          {emailOpen && (
+            <div className="vr-email">
+              <div className="vr-field">
+                <label>To</label>
+                <input value={emailTo} onChange={(e) => setEmailTo(e.target.value)} />
+              </div>
+              <div className="vr-field">
+                <label>CC</label>
+                <input
+                  value={emailCc}
+                  onChange={(e) => setEmailCc(e.target.value)}
+                  placeholder="cc@company.co.za"
+                />
+              </div>
+              <div className="vr-field">
+                <label>Subject</label>
+                <input readOnly value="Missing Payment Reference" />
+              </div>
+              <textarea readOnly value={emailBody} rows={9} />
+              <div className="vr-row-between">
+                <button className="vr-primary" onClick={sendAndTrack}>
+                  Send & Track
+                </button>
+                {emailStatus && <span className="vr-status">{emailStatus}</span>}
+              </div>
             </div>
           )}
-        </div>
-      )}
-    </GlassCard>
+        </section>
+      </main>
+
+      <footer className="vr-footer">
+        Signed in as <b>{user.name}</b> · {user.title} · Voice: en-ZA
+      </footer>
+    </div>
   );
 }
+
+const CSS = `
+.vr-root{min-height:100vh;background:linear-gradient(180deg,#0b1220 0%,#0f1e3a 100%);color:#e2e8f0;font-family:'Inter',system-ui,sans-serif;padding:20px;box-sizing:border-box;}
+.vr-header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;margin-bottom:20px;}
+.vr-brand{display:flex;align-items:center;gap:14px;}
+.vr-logo{width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,#0ea5e9,#22c55e);display:grid;place-items:center;font-weight:800;color:#0b1220;font-size:16px;}
+.vr-header h1{margin:0;font-size:22px;color:#60a5fa;font-family:'Space Grotesk',sans-serif;}
+.vr-header p{margin:2px 0 0;color:#94a3b8;font-size:13px;}
+.vr-user{display:flex;align-items:center;gap:10px;}
+.vr-user label{color:#94a3b8;font-size:13px;}
+.vr-user select,.vr-card input,.vr-card textarea{background:#0b1a33;color:#e2e8f0;border:1px solid #1e3a5f;border-radius:10px;padding:10px 12px;font-size:14px;font-family:inherit;}
+.vr-user select{min-width:220px;}
+.vr-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+@media (max-width:900px){.vr-grid{grid-template-columns:1fr;}}
+.vr-card{background:rgba(15,30,58,0.7);backdrop-filter:blur(10px);border:1px solid #1e3a5f;border-radius:16px;padding:18px;box-shadow:0 4px 24px rgba(0,0,0,0.25);}
+.vr-card h2{margin:0 0 12px;font-size:16px;color:#93c5fd;font-family:'Space Grotesk',sans-serif;}
+.vr-row-between{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap;}
+.vr-messages{background:#0b1a33;border:1px solid #1e3a5f;border-radius:12px;padding:12px;height:280px;overflow-y:auto;font-size:14px;}
+.vr-msg{margin:6px 0;padding:8px 10px;border-radius:8px;line-height:1.4;}
+.vr-msg-you{background:#1e3a5f;}
+.vr-msg-vai{background:#132b52;border-left:3px solid #22c55e;}
+.vr-speaker{background:transparent;border:none;color:#94a3b8;cursor:pointer;margin-left:6px;font-size:14px;}
+.vr-input-row{display:flex;gap:8px;margin-top:10px;}
+.vr-input-row input{flex:1;}
+.vr-mic{width:44px;height:44px;border-radius:50%;border:none;background:linear-gradient(135deg,#0ea5e9,#22c55e);color:white;font-size:18px;cursor:pointer;}
+.vr-mic.listening{background:#ef4444;animation:pulse 1s infinite;}
+@keyframes pulse{0%,100%{transform:scale(1);}50%{transform:scale(1.08);}}
+.vr-send,.vr-primary{background:#22c55e;color:#052e16;border:none;padding:10px 16px;border-radius:10px;font-weight:600;cursor:pointer;font-family:inherit;}
+.vr-send:hover,.vr-primary:hover{background:#16a34a;color:white;}
+.vr-tablewrap{overflow-x:auto;}
+.vr-card table{width:100%;border-collapse:collapse;font-size:14px;}
+.vr-card th,.vr-card td{padding:8px 10px;text-align:left;border-bottom:1px solid #1e3a5f;}
+.vr-card th{color:#94a3b8;font-weight:500;font-size:12px;text-transform:uppercase;}
+.vr-warn td{background:rgba(239,68,68,0.08);}
+.vr-quick{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;}
+.vr-quick button{background:#1e3a5f;color:#e2e8f0;border:1px solid #1e3a5f;padding:6px 12px;border-radius:8px;cursor:pointer;font-size:13px;}
+.vr-quick button:hover{background:#2a4a75;}
+.vr-link{background:none;border:none;color:#60a5fa;cursor:pointer;font-size:13px;}
+.vr-hint{color:#94a3b8;font-size:13px;margin:0 0 10px;}
+.vr-empty{color:#64748b;font-style:italic;font-size:13px;}
+.vr-tasks{list-style:none;padding:0;margin:0;}
+.vr-tasks li{display:flex;justify-content:space-between;padding:8px 10px;background:#0b1a33;border-radius:8px;margin-bottom:6px;font-size:14px;}
+.vr-when{color:#22c55e;font-weight:600;font-size:13px;}
+.vr-email{display:flex;flex-direction:column;gap:10px;margin-top:8px;}
+.vr-field{display:flex;flex-direction:column;gap:4px;}
+.vr-field label{font-size:12px;color:#94a3b8;}
+.vr-email textarea{background:#0b1a33;color:#e2e8f0;border:1px solid #1e3a5f;border-radius:10px;padding:10px 12px;font-family:inherit;font-size:13px;white-space:pre-wrap;}
+.vr-status{color:#22c55e;font-size:13px;font-weight:600;}
+.vr-footer{margin-top:20px;text-align:center;color:#64748b;font-size:12px;}
+`;
